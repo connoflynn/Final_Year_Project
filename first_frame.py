@@ -1,3 +1,5 @@
+# script to save a still image of the first frame of a video
+
 import cv2
 import numpy as np
 

@@ -9,6 +9,7 @@ import cv2
 import os
 from shapely.geometry import Polygon
 from get_spaces import get_spaces
+from get_occupied import get_occupied
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -111,6 +112,8 @@ if len(idxs) > 0:
 		(x, y) = (boxes[i][0], boxes[i][1])
 		(w, h) = (boxes[i][2], boxes[i][3])
 
+		# add car coordinates to list of cars
+		# TODO check to see if the object is a vehicle first
 		Cars.append([[x,y],[x + w, y + 0],[x + w, y + h],[x + 0, y +h]])
 
 		# draw a bounding box rectangle and label on the image
@@ -120,41 +123,27 @@ if len(idxs) > 0:
 		cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
 
-# find if two boxes overlap with eachother
-def findOverlap(box1, box2):
-	# if area of overlap is greater than (area of space/a threshold percentage) then return true
-	threshold = 0.35
-	# make sure there is an overlap
-	if box1.intersection(box2).area > 0.0:
-		if (box1.intersection(box2).area/box2.area) > threshold:
-			return True
-		else:
-			return False
-	else:
-		return False
-
 # get spaces coordinates from file and draw them on image
 spaces_dict = get_spaces()
-print(spaces_dict)
+#add occupied key to dict using get_occupied function
+spaces_dict = get_occupied(spaces_dict, Cars)
+
 spaces_coordinates = []
 for space in spaces_dict["spaces"]:
-	print(space)
-	print(type(space["co_ordinates"]))
-	spaces_coordinates.append(space["co_ordinates"])
+	spaces_coordinates.append([space["co_ordinates"], space["occupied"]])
 
-
+# function to draw spaces on the image, green if empty and red if occupied
 def draw_spaces(frame):
 	for space in spaces_coordinates:
-		pts = np.array(space, np.int32)
+		co_ordinates = space[0]
+		occupied = space[1]
+		pts = np.array(co_ordinates, np.int32)
 		pts = pts.reshape((-1, 1, 2))
 		isClosed = True
-		color = (0,255,0)
-		for car in Cars:
-			p1 = Polygon(car)
-			p2 = Polygon(space)
-			overlap = findOverlap(p1,p2)
-			if overlap == True:
-				color = (0,0,255)
+		if occupied == 1:
+			color = (0,0,255)
+		else:
+			color = (0,255,0)
 		cv2.polylines(frame,[pts],isClosed,color,2)
 
 draw_spaces(image)
@@ -166,8 +155,8 @@ draw_spaces(image)
 
 # save image output
 #generate name for output image from input image
-output_image_name = args["image"]
-output_image_name = output_image_name[:len(output_image_name) - 4]
+image_name = args["image"]
+output_image_name = image_name[:len(image_name) - 4]
 
 cv2.imwrite(output_image_name + '_output.jpg', image)
 

@@ -1,6 +1,7 @@
 import cv2 
 import numpy as np
 import json
+import copy
   
 imgFile = "dataset_empty.jpg"
 
@@ -21,17 +22,16 @@ def draw_box(event, x, y, flags, param):
         # every 4 clicks on the image, the space co-ordinates are saved to a file and shown on the image
         if len(box_coordinates) == 4:
 
-            #save space to json file
+            #create json file to write to
             f = open("spaces_coordinates_dataset.json", "w")
-            #string of co_ordinates values
-            co_ordinates = "[" + ','.join(str(coordinate) for coordinate in box_coordinates) + "]"
 
             space = dict()
             space["id"] = space_id
             space_id = space_id + 1
-            space["co_ordinates"] = co_ordinates
+            space["co_ordinates"] = box_coordinates
 
-            spaces_dict["spaces"].append(space)
+            spaces_dict["spaces"].append(copy.deepcopy(space))
+
             #convert the dictionary to json format
             space_json_object = json.dumps(spaces_dict, indent = 4)
             f.write(space_json_object)
