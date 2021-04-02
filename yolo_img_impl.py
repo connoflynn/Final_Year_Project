@@ -10,6 +10,7 @@ import os
 from shapely.geometry import Polygon
 from get_spaces import get_spaces
 from get_occupied import get_occupied
+from create_output_file import create_json
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -123,13 +124,14 @@ if len(idxs) > 0:
 		cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
 
-# get spaces coordinates from file and draw them on image
-spaces_dict = get_spaces()
+# get spaces coordinates from file and add them to a dictionary
+spaces_dict = get_spaces("spaces_coordinates_dataset.json")
 #add occupied key to dict using get_occupied function
 spaces_dict = get_occupied(spaces_dict, Cars)
 
 spaces_coordinates = []
 for space in spaces_dict["spaces"]:
+	print(space)
 	spaces_coordinates.append([space["co_ordinates"], space["occupied"]])
 
 # function to draw spaces on the image, green if empty and red if occupied
@@ -158,6 +160,10 @@ draw_spaces(image)
 image_name = args["image"]
 output_image_name = image_name[:len(image_name) - 4]
 
-cv2.imwrite(output_image_name + '_output.jpg', image)
+#create an image of the output
+cv2.imwrite(output_image_name + '_output.png', image)
+
+#create a json file of the output information
+create_json(output_image_name, spaces_dict)
 
 cv2.waitKey(0)
