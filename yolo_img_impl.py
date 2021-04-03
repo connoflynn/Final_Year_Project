@@ -109,19 +109,21 @@ idxs = cv2.dnn.NMSBoxes(boxes, confidences, args["confidence"], args["threshold"
 if len(idxs) > 0:
 	# loop over the indexes we are keeping
 	for i in idxs.flatten():
-		# extract the bounding box coordinates
-		(x, y) = (boxes[i][0], boxes[i][1])
-		(w, h) = (boxes[i][2], boxes[i][3])
+		# only add bounding boxes for vehicles
+		if LABELS[classIDs[i]] == "car" or LABELS[classIDs[i]] == "bus" or LABELS[classIDs[i]] == "truck":
+			# extract the bounding box coordinates
+			(x, y) = (boxes[i][0], boxes[i][1])
+			(w, h) = (boxes[i][2], boxes[i][3])
 
-		# add car coordinates to list of cars
-		# TODO check to see if the object is a vehicle first
-		Cars.append([[x,y],[x + w, y + 0],[x + w, y + h],[x + 0, y +h]])
+			# add car coordinates to list of cars
+			# TODO check to see if the object is a vehicle first
+			Cars.append([[x,y],[x + w, y + 0],[x + w, y + h],[x + 0, y +h]])
 
-		# draw a bounding box rectangle and label on the image
-		color = [int(c) for c in COLORS[classIDs[i]]]
-		cv2.rectangle(image, (x, y), (x + w, y + h), color, 2)
-		text = "{}: {:.4f}".format(LABELS[classIDs[i]], confidences[i])
-		cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+			# draw a bounding box rectangle and label on the image
+			color = [int(c) for c in COLORS[classIDs[i]]]
+			cv2.rectangle(image, (x, y), (x + w, y + h), color, 2)
+			text = "{}: {:.4f}".format(LABELS[classIDs[i]], confidences[i])
+			cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
 
 # get spaces coordinates from file and add them to a dictionary
