@@ -8,7 +8,7 @@ import xmltodict
 # a list that will store the accuracy for each photo and which spaces were incorrectly guessed
 predictions = []
 
-folder_path = "test_data/PKLot/PKLot/UFPR05/Rainy/"
+folder_path = "test_data/PKLot/PKLot/UFPR05/Cloudy/"
 
 def json_get_occupied(json_dict):
     spaces_status = []
@@ -57,7 +57,7 @@ def compare(alg_lst, correct_lst):
 
 #cross refernce the json file and the xml file
 def get_accuracy(json_file, xml_file):
-    global folder_path, predictions
+    global predictions
 
     # open xml file 
     xml = open(xml_file, "r").read()
@@ -71,20 +71,28 @@ def get_accuracy(json_file, xml_file):
     #get the spaces information from json_get_occupied function
     alg_spaces_lst = json_get_occupied(json_dict)
 
-    #compare the two lists
-    accuracy, incorrect = compare(alg_spaces_lst, correct_spaces_lst)
+    #we only want to test the accuracy if the car park is not empty because an
+    #empty car park is too easy
+    actual_total_occupied = 0
+    for space in correct_spaces_lst:
+        if space["occupied"] == 1:
+            actual_total_occupied += 1
 
-    #create a dictionary containing the accuracy information and append it to the list of predictions
-    prediction = dict()
-    prediction["picture"] = json_file[:len(json_file) - 5]
-    prediction["accuracy"] = accuracy
-    prediction["incorrect"] = incorrect
-    predictions.append(prediction)
-    #print(prediction)
+    #check if there is at least one car in the car park
+    if actual_total_occupied > 0:
+        #compare the two lists
+        accuracy, incorrect = compare(alg_spaces_lst, correct_spaces_lst)
+
+        #create a dictionary containing the accuracy information and append it to the list of predictions
+        prediction = dict()
+        prediction["picture"] = json_file[:len(json_file) - 5]
+        prediction["accuracy"] = accuracy
+        prediction["incorrect"] = incorrect
+        predictions.append(prediction)
+        #print(prediction)
 
 
 def test_algorithm(folder_path):
-    print("Starting...")
     #check accuracy for each json file and corresponding xml file
     for root, dirs, files in os.walk(folder_path):
         for filename in files:
@@ -98,28 +106,34 @@ def test_algorithm(folder_path):
                         xml_file = root + "/" + filename
                         get_accuracy(json_file, xml_file)
 
+def output_results(predictions):
+    #if predictions have been made
+    if len(predictions) > 0:
+        #get the worst prediction
+        worst_prediction = predictions[0]
+
+
+        count = 0
+        for prediction in predictions:
+            count += prediction["accuracy"]
+            #print(type(prediction["accuracy"]))
+            if prediction["accuracy"] < 50:
+                print(prediction["picture"])
+
+            if prediction["accuracy"] < worst_prediction["accuracy"]:
+                worst_prediction = prediction
+
+        print("Predictions made: " + str(len(predictions)))
+        average_accuracy = count/len(predictions)
+
+        print("Average Accuracy: "  + str(average_accuracy))
+        print("Worst Prediction:")
+        print(worst_prediction)
+    else:
+        print("No predictions found in file source!")
+
+print("Starting...")
 test_algorithm(folder_path)
-#print(predictions)
-
-#get the worst prediction
-worst_prediction = predictions[0]
-
-
-count = 0
-for prediction in predictions:
-    count += prediction["accuracy"]
-    #print(type(prediction["accuracy"]))
-    if prediction["accuracy"] < 50:
-        print(prediction["picture"])
-
-    if prediction["accuracy"] < worst_prediction["accuracy"]:
-        worst_prediction = prediction
-
-print("Predictions made: " + str(len(predictions)))
-average_accuracy = count/len(predictions)
-
-print("Average Accuracy: "  + str(average_accuracy))
-print("Worst Prediction:")
-print(worst_prediction)
-
+print(predictions)
+output_results(predictions)
 print("Completed")
