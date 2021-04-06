@@ -3,7 +3,7 @@ import numpy as np
 import json
 import copy
   
-imgFile = "dataset_empty.jpg"
+imgFile = "UFPR04_empty.jpg"
 
 img = cv2.imread(imgFile) 
 
@@ -23,7 +23,7 @@ def draw_box(event, x, y, flags, param):
         if len(box_coordinates) == 4:
 
             #create json file to write to
-            f = open("spaces_coordinates_dataset.json", "w")
+            f = open("spaces_coordinates_UFPR04.json", "w")
 
             space = dict()
             space["id"] = space_id

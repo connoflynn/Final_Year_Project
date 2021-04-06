@@ -8,7 +8,7 @@ import xmltodict
 # a list that will store the accuracy for each photo and which spaces were incorrectly guessed
 predictions = []
 
-folder_path = "test_data/PKLot/PKLot/UFPR05/Cloudy/"
+folder_path = "test_data/PKLot/PKLot/UFPR05/"
 
 def json_get_occupied(json_dict):
     spaces_status = []
@@ -111,9 +111,11 @@ def output_results(predictions):
     if len(predictions) > 0:
         #get the worst prediction
         worst_prediction = predictions[0]
-
+        print("\n\n")
+        print("Predictions made: " + str(len(predictions)))
 
         count = 0
+        print("Predictions less than 50 percent accuracy:")
         for prediction in predictions:
             count += prediction["accuracy"]
             #print(type(prediction["accuracy"]))
@@ -123,7 +125,13 @@ def output_results(predictions):
             if prediction["accuracy"] < worst_prediction["accuracy"]:
                 worst_prediction = prediction
 
-        print("Predictions made: " + str(len(predictions)))
+        hundred_percent = 0
+        for prediction in predictions:
+            if prediction["accuracy"] == 100:
+                hundred_percent += 1
+
+        print("Number of predictions with 100 percent accuracy: " + str(hundred_percent))
+        
         average_accuracy = count/len(predictions)
 
         print("Average Accuracy: "  + str(average_accuracy))
@@ -134,6 +142,6 @@ def output_results(predictions):
 
 print("Starting...")
 test_algorithm(folder_path)
-print(predictions)
+#print(predictions)
 output_results(predictions)
 print("Completed")

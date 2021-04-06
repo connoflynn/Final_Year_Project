@@ -1,33 +1,21 @@
-# USAGE
-# python yolo_img_impl.py --image cctv3_still.png --yolo yolo-coco
+# script to implement all the yolo tasks on an image
 
 import numpy as np
 import argparse
 import time
 import cv2
 import os
+# pip install shapely
 from shapely.geometry import Polygon
+from shapely.geometry import Point
 from get_spaces import get_spaces
 from get_occupied import get_occupied
 from create_output_file import create_json
+from math import floor
 
-json_file = "spaces_coordinates_UFPR05.json"
-
-# construct the argument parse and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--image", required=True,
-	help="path to input image")
-ap.add_argument("-y", "--yolo", default="yolo-coco",
-	help="base path to YOLO directory")
-ap.add_argument("-c", "--confidence", type=float, default=0.5,
-	help="minimum probability to filter weak detections")
-ap.add_argument("-t", "--threshold", type=float, default=0.3,
-	help="threshold when applyong non-maxima suppression")
-args = vars(ap.parse_args())
-
-def yolo_implementation(args):
+def yolo_implementation(yolo_settings):
 	# get the labels for each object in the coco.names file
-	labelsPath = os.path.sep.join([args["yolo"], "coco.names"])
+	labelsPath = os.path.sep.join([yolo_settings["yolo"], "coco.names"])
 	labels = open(labelsPath).read().strip().split("\n")
 
 	# create a list of random colours to use for each label type
@@ -36,8 +24,8 @@ def yolo_implementation(args):
 	colours = np.random.randint(0, 255, size=(len(labels), 3), dtype="uint8")
 
 	# set paths to weights and config files
-	weightsPath = os.path.sep.join([args["yolo"], "yolov3.weights"])
-	configPath = os.path.sep.join([args["yolo"], "yolov3.cfg"])
+	weightsPath = os.path.sep.join([yolo_settings["yolo"], "yolov3.weights"])
+	configPath = os.path.sep.join([yolo_settings["yolo"], "yolov3.cfg"])
 
 	# load trained yolo information using built in dnn.readNetFromDarknet function
 	print("Loading YOLO from disk...")
@@ -49,14 +37,11 @@ def yolo_implementation(args):
 	ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
 	# load the image and determine the height and width
-	image = cv2.imread(args["image"])
+	image = cv2.imread(yolo_settings["image"])
 	(H, W) = image.shape[:2]
 
 	# create a blob from the image
 	blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (416, 416), swapRB=True, crop=False)
-	# r = blob[0, 0, :, :]
-	# cv2.imshow("blob", r)
-	# cv2.waitKey(0)
 
 	#set the new input value for the network as the blob 
 	net.setInput(blob)
@@ -90,7 +75,7 @@ def yolo_implementation(args):
 			# 	print("Class ID: " + str(classID) + " Condidence: " + str(confidence))
 
 			# only if the confidence level is higher than the specified level
-			if confidence > args["confidence"]:
+			if confidence > yolo_settings["confidence"]:
 				# scale the boxes reletive to the original image
 				box = detection[0:4] * np.array([W, H, W, H])
 				(centerX, centerY, width, height) = box.astype("int")
@@ -107,7 +92,7 @@ def yolo_implementation(args):
 				classIDs.append(classID)
 
 	# apply non-maxima suppression to suppress weak, overlapping bounding boxes
-	idxs = cv2.dnn.NMSBoxes(boxes, confidences, args["confidence"], args["threshold"])
+	idxs = cv2.dnn.NMSBoxes(boxes, confidences, yolo_settings["confidence"], yolo_settings["threshold"])
 
 	# if there is at least 1 object detected
 	if len(idxs) > 0:
@@ -126,8 +111,15 @@ def yolo_implementation(args):
 				color = [int(c) for c in colours[classIDs[i]]]
 				cv2.rectangle(image, (x, y), (x + w, y + h), color, 2)
 				text = "{}: {:.4f}".format(labels[classIDs[i]], confidences[i])
-				cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+				cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 	return image, Cars
+
+# find the centre of a polygon, given the co_ordinates
+def get_centre(co_ordinates):
+	co_ordinates = Polygon(co_ordinates)
+	centre = co_ordinates.centroid
+	centre = (floor(centre.x), floor(centre.y))
+	return centre
 
 # function to draw spaces on the image, green if empty and red if occupied
 def draw_spaces(frame, spaces_coordinates):
@@ -135,6 +127,7 @@ def draw_spaces(frame, spaces_coordinates):
 		co_ordinates = space[0]
 		occupied = space[1]
 		id = space[2]
+		centre = get_centre(co_ordinates)
 		pts = np.array(co_ordinates, np.int32)
 		pts = pts.reshape((-1, 1, 2))
 		isClosed = True
@@ -142,11 +135,13 @@ def draw_spaces(frame, spaces_coordinates):
 			color = (0,0,255)
 		else:
 			color = (0,255,0)
+		# write the ID in the space
+		cv2.putText(frame,str(id), centre, cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+		# draw the space
 		cv2.polylines(frame,[pts],isClosed,color,2)
 
-#function if we want to 
-def create_new_file(image, Cars, args, json_file):
-	#global image, Cars, args, json_file
+#function if we want to save the image as a file
+def create_new_file(image, Cars, yolo_settings, json_file):
 	try:
 		# get spaces coordinates from file and add them to a dictionary
 		spaces_dict = get_spaces(json_file)
@@ -155,19 +150,13 @@ def create_new_file(image, Cars, args, json_file):
 
 		spaces_coordinates = []
 		for space in spaces_dict["spaces"]:
-			#print(space)
 			spaces_coordinates.append([space["co_ordinates"], space["occupied"], space["id"]])
 
 		draw_spaces(image, spaces_coordinates)
 
-
-		# show the output image
-		#cv2.namedWindow("View spaces", cv2.WINDOW_NORMAL) 
-		#cv2.imshow("View spaces", image)
-
 		# save image output
 		#generate name for output image from input image
-		image_name = args["image"]
+		image_name = yolo_settings["image"]
 		output_image_name = image_name[:len(image_name) - 4]
 
 		#create an image of the output
@@ -179,7 +168,7 @@ def create_new_file(image, Cars, args, json_file):
 		print("Error")
 
 # function if we just want to show the output result 
-def show_image(image, json_file):
+def show_image(image, json_file, Cars):
 
 	# get spaces coordinates from file and add them to a dictionary
 	spaces_dict = get_spaces(json_file)
@@ -188,7 +177,6 @@ def show_image(image, json_file):
 
 	spaces_coordinates = []
 	for space in spaces_dict["spaces"]:
-		#print(space)
 		spaces_coordinates.append([space["co_ordinates"], space["occupied"], space["id"]])
 
 	draw_spaces(image, spaces_coordinates)
@@ -199,8 +187,10 @@ def show_image(image, json_file):
 
 	cv2.waitKey(0)
 
+def run_create(yolo_settings,json_file):
+	image, Cars = yolo_implementation(yolo_settings)
+	create_new_file(image, Cars, yolo_settings, json_file)
 
-image, Cars = yolo_implementation(args)
-create_new_file(image, Cars, args, json_file)
-
-#show_image(image, json_file)
+def run_show(yolo_settings, json_file):
+	image, Cars = yolo_implementation(yolo_settings)
+	show_image(image, json_file, Cars)

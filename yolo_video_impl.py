@@ -22,7 +22,7 @@ ap.add_argument("-y", "--yolo", required=True,
 ap.add_argument("-c", "--confidence", type=float, default=0.5,
 	help="minimum probability to filter weak detections")
 ap.add_argument("-t", "--threshold", type=float, default=0.3,
-	help="threshold when applyong non-maxima suppression")
+	help="threshold when applying non-maxima suppression")
 args = vars(ap.parse_args())
 
 # load the COCO class labels our YOLO model was trained on
