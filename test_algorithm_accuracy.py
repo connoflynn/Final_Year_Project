@@ -8,6 +8,11 @@ import xmltodict
 # a list that will store the accuracy for each photo and which spaces were incorrectly guessed
 predictions = []
 
+total_space_predictions = 0
+incorrect_guesses = 0
+false_positives = 0
+false_negatives = 0
+
 folder_path = "test_data/PKLot/PKLot/UFPR05/"
 
 def json_get_occupied(json_dict):
@@ -36,21 +41,31 @@ def xml_get_occupied(xml_dict, xml_file):
 
 #function to compare two lists containing algorithm guesses and correct status of spaces
 def compare(alg_lst, correct_lst):
+    global incorrect_guesses, false_negatives, false_positives, total_space_predictions
+
     correct_guesses = 0
-    incorrect_guesses = 0
+    # incorrect_guesses = 0
+    # false_positives = 0
+    # false_negatives = 0
     incorrect_space_ids = []
-    total_guesses = 0
+    image_guesses = 0
     for space in alg_lst:
         for item in correct_lst:
             if item["id"] == space["id"]:
-                total_guesses +=1
+                image_guesses +=1
+                total_space_predictions += 1
                 if space["occupied"] == item["occupied"]:
                     correct_guesses += 1
                 else:
                     incorrect_guesses += 1
+                    #check if it was a false positive or a false negative
+                    if item["occupied"] == 1:
+                        false_negatives += 1
+                    else:
+                        false_positives += 1
                     incorrect_space_ids.append(item["id"])
     
-    accuracy = (correct_guesses / total_guesses)*100
+    accuracy = (correct_guesses / image_guesses)*100
     #accuracy = "{:.3f}".format(accuracy)
 
     return accuracy, incorrect_space_ids
@@ -132,6 +147,11 @@ def output_results(predictions):
 
         print("Number of predictions with 100 percent accuracy: " + str(hundred_percent))
         
+        print("Total number of spaces classified: "+ str(total_space_predictions))
+        print("Total number of spaces classified incorrectly: "+ str(incorrect_guesses))
+        print("Total number of false positives (space classified as occupied when it was empty):" + str(false_positives))
+        print("Total number of false negatives (space classified as free when it was occupied):" + str(false_negatives))
+
         average_accuracy = count/len(predictions)
 
         print("Average Accuracy: "  + str(average_accuracy))
